@@ -24,6 +24,8 @@ import {
   type GroupMember, 
   type InsertGroupMember 
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, gt, or } from "drizzle-orm";
 
 // Interface for all storage operations
 export interface IStorage {
@@ -631,4 +633,223 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async createPost(post: InsertPost): Promise<Post> {
+    const [newPost] = await db
+      .insert(posts)
+      .values({ ...post, createdAt: new Date() })
+      .returning();
+    return newPost;
+  }
+
+  async getPost(id: number): Promise<Post | undefined> {
+    const [post] = await db.select().from(posts).where(eq(posts.id, id));
+    return post || undefined;
+  }
+
+  async getAllPosts(): Promise<Post[]> {
+    return db.select().from(posts).orderBy(desc(posts.createdAt));
+  }
+
+  async getPostsByUserId(userId: number): Promise<Post[]> {
+    return db
+      .select()
+      .from(posts)
+      .where(eq(posts.userId, userId))
+      .orderBy(desc(posts.createdAt));
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values({ ...comment, createdAt: new Date() })
+      .returning();
+    return newComment;
+  }
+
+  async getComment(id: number): Promise<Comment | undefined> {
+    const [comment] = await db.select().from(comments).where(eq(comments.id, id));
+    return comment || undefined;
+  }
+
+  async getCommentsByPostId(postId: number): Promise<Comment[]> {
+    return db
+      .select()
+      .from(comments)
+      .where(eq(comments.postId, postId))
+      .orderBy(comments.createdAt);
+  }
+
+  async createLike(like: InsertLike): Promise<Like> {
+    // Check if the user already liked the post
+    const existingLike = await this.getUserPostLike(like.postId, like.userId);
+    if (existingLike) {
+      return existingLike;
+    }
+
+    const [newLike] = await db
+      .insert(likes)
+      .values({ ...like, createdAt: new Date() })
+      .returning();
+    return newLike;
+  }
+
+  async getLike(id: number): Promise<Like | undefined> {
+    const [like] = await db.select().from(likes).where(eq(likes.id, id));
+    return like || undefined;
+  }
+
+  async getLikesByPostId(postId: number): Promise<Like[]> {
+    return db.select().from(likes).where(eq(likes.postId, postId));
+  }
+
+  async getLikeCountByPostId(postId: number): Promise<number> {
+    const result = await db.select().from(likes).where(eq(likes.postId, postId));
+    return result.length;
+  }
+
+  async checkUserLikedPost(postId: number, userId: number): Promise<boolean> {
+    const like = await this.getUserPostLike(postId, userId);
+    return !!like;
+  }
+
+  private async getUserPostLike(postId: number, userId: number): Promise<Like | undefined> {
+    const [like] = await db
+      .select()
+      .from(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userId, userId)));
+    return like || undefined;
+  }
+
+  async deleteLike(postId: number, userId: number): Promise<void> {
+    await db
+      .delete(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userId, userId)));
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const [newEvent] = await db
+      .insert(events)
+      .values(event)
+      .returning();
+    return newEvent;
+  }
+
+  async getEvent(id: number): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    return event || undefined;
+  }
+
+  async getAllEvents(): Promise<Event[]> {
+    return db.select().from(events);
+  }
+
+  async getUpcomingEvents(): Promise<Event[]> {
+    const now = new Date();
+    return db
+      .select()
+      .from(events)
+      .where(gt(events.date, now))
+      .orderBy(events.date);
+  }
+
+  async createGroup(group: InsertGroup): Promise<Group> {
+    const [newGroup] = await db
+      .insert(groups)
+      .values(group)
+      .returning();
+    return newGroup;
+  }
+
+  async getGroup(id: number): Promise<Group | undefined> {
+    const [group] = await db.select().from(groups).where(eq(groups.id, id));
+    return group || undefined;
+  }
+
+  async getAllGroups(): Promise<Group[]> {
+    return db.select().from(groups);
+  }
+
+  async addGroupMember(groupMember: InsertGroupMember): Promise<GroupMember> {
+    const [newGroupMember] = await db
+      .insert(groupMembers)
+      .values(groupMember)
+      .returning();
+    return newGroupMember;
+  }
+
+  async getGroupMembers(groupId: number): Promise<GroupMember[]> {
+    return db
+      .select()
+      .from(groupMembers)
+      .where(eq(groupMembers.groupId, groupId));
+  }
+
+  async createConnection(connection: InsertConnection): Promise<Connection> {
+    const [newConnection] = await db
+      .insert(connections)
+      .values(connection)
+      .returning();
+    return newConnection;
+  }
+
+  async getConnection(id: number): Promise<Connection | undefined> {
+    const [connection] = await db.select().from(connections).where(eq(connections.id, id));
+    return connection || undefined;
+  }
+
+  async getUserConnections(userId: number): Promise<Connection[]> {
+    return db
+      .select()
+      .from(connections)
+      .where(
+        or(
+          eq(connections.requesterId, userId),
+          eq(connections.addresseeId, userId)
+        )
+      );
+  }
+
+  async updateConnectionStatus(id: number, status: string): Promise<Connection> {
+    const [updatedConnection] = await db
+      .update(connections)
+      .set({ status })
+      .where(eq(connections.id, id))
+      .returning();
+    return updatedConnection;
+  }
+}
+
+// Initialize the storage with database
+export const storage = new DatabaseStorage();
