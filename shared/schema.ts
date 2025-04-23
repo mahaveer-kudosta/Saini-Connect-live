@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, relations } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -119,6 +120,90 @@ export const insertGroupMemberSchema = createInsertSchema(groupMembers).omit({
   id: true,
   joinedAt: true,
 });
+
+// Define relations between tables
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts),
+  comments: many(comments),
+  likes: many(likes),
+  createdEvents: many(events, { relationName: "creator" }),
+  createdGroups: many(groups, { relationName: "creator" }),
+  sentConnections: many(connections, { relationName: "requester" }),
+  receivedConnections: many(connections, { relationName: "addressee" }),
+  groupMemberships: many(groupMembers)
+}));
+
+export const postsRelations = relations(posts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [posts.userId],
+    references: [users.id]
+  }),
+  comments: many(comments),
+  likes: many(likes)
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  post: one(posts, {
+    fields: [comments.postId],
+    references: [posts.id]
+  }),
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id]
+  })
+}));
+
+export const likesRelations = relations(likes, ({ one }) => ({
+  post: one(posts, {
+    fields: [likes.postId],
+    references: [posts.id]
+  }),
+  user: one(users, {
+    fields: [likes.userId],
+    references: [users.id]
+  })
+}));
+
+export const eventsRelations = relations(events, ({ one }) => ({
+  creator: one(users, {
+    fields: [events.createdBy],
+    references: [users.id],
+    relationName: "creator"
+  })
+}));
+
+export const groupsRelations = relations(groups, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [groups.createdBy],
+    references: [users.id],
+    relationName: "creator"
+  }),
+  members: many(groupMembers)
+}));
+
+export const connectionsRelations = relations(connections, ({ one }) => ({
+  requester: one(users, {
+    fields: [connections.requesterId],
+    references: [users.id],
+    relationName: "requester"
+  }),
+  addressee: one(users, {
+    fields: [connections.addresseeId],
+    references: [users.id],
+    relationName: "addressee"
+  })
+}));
+
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupMembers.groupId],
+    references: [groups.id]
+  }),
+  user: one(users, {
+    fields: [groupMembers.userId],
+    references: [users.id]
+  })
+}));
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
