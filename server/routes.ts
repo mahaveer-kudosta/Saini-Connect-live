@@ -1,8 +1,10 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import passport from "passport";
+import { hashPassword } from "./index";
 import { 
   insertUserSchema, 
   insertPostSchema, 
@@ -14,25 +16,77 @@ import {
   insertGroupMemberSchema
 } from "@shared/schema";
 
+// Auth middleware to check if a user is logged in
+const isAuthenticated = (req: Request, res: Response, next: any) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API error handling middleware
   app.use("/api/*", (req, res, next) => {
     next();
   });
 
-  // Current User
-  app.get("/api/users/me", async (req, res) => {
+  // Authentication routes
+  // Register
+  app.post("/api/auth/register", async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      // For demonstration, return a mock user
-      const currentUser = await storage.getUserByUsername("admin");
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
       }
+
+      // Hash the password before storing
+      const userData = insertUserSchema.parse({
+        ...req.body,
+        password: hashPassword(req.body.password)
+      });
+
+      const user = await storage.createUser(userData);
       
-      // Don't expose password
-      const { password, ...userWithoutPassword } = currentUser;
-      
+      // Automatically log the user in after registration
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed after registration" });
+        }
+        
+        // Don't expose password
+        const { password, ...userWithoutPassword } = user;
+        return res.status(201).json(userWithoutPassword);
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Login
+  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
+    // If this function is called, authentication was successful
+    // req.user contains the authenticated user
+    const { password, ...userWithoutPassword } = req.user as any;
+    res.json(userWithoutPassword);
+  });
+
+  // Logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout(() => {
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Current User
+  app.get("/api/users/me", isAuthenticated, async (req, res) => {
+    try {
+      // User is already authenticated via isAuthenticated middleware
+      const { password, ...userWithoutPassword } = req.user as any;
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -40,15 +94,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update current user
-  app.patch("/api/users/me", async (req, res) => {
+  app.patch("/api/users/me", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get and update the user
-      const currentUser = await storage.getUserByUsername("admin");
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const updatedUser = await storage.updateUser(currentUser.id, req.body);
+      const user = req.user as any;
+      const updatedUser = await storage.updateUser(user.id, req.body);
       
       // Don't expose password
       const { password, ...userWithoutPassword } = updatedUser;
@@ -81,12 +130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const users = await storage.getAllUsers();
       
-      // Skip the current user
-      const currentUser = await storage.getUserByUsername("admin");
+      // Skip the current user if logged in
+      const currentUserId = req.isAuthenticated() ? (req.user as any).id : -1;
       
       // Don't expose passwords
       const usersWithoutPasswords = users
-        .filter(user => user.id !== currentUser?.id)
+        .filter(user => user.id !== currentUserId)
         .map(user => {
           const { password, ...userWithoutPassword } = user;
           return userWithoutPassword;
@@ -118,22 +167,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user posts
-  app.get("/api/users/me/posts", async (req, res) => {
+  app.get("/api/users/me/posts", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const posts = await storage.getPostsByUserId(currentUser.id);
+      const user = req.user as any;
+      const posts = await storage.getPostsByUserId(user.id);
       
       // Attach user data to posts
       const postsWithUser = posts.map(post => ({
         ...post,
         user: {
-          ...currentUser,
+          ...user,
           password: undefined
         }
       }));
@@ -189,18 +232,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create post
-  app.post("/api/posts", async (req, res) => {
+  app.post("/api/posts", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const postData = insertPostSchema.parse({
         ...req.body,
-        userId: currentUser.id
+        userId: user.id
       });
       
       const post = await storage.createPost(postData);
@@ -242,21 +280,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add comment to post
-  app.post("/api/posts/:id/comments", async (req, res) => {
+  app.post("/api/posts/:id/comments", isAuthenticated, async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
-      
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const commentData = insertCommentSchema.parse({
         ...req.body,
         postId,
-        userId: currentUser.id
+        userId: user.id
       });
       
       const comment = await storage.createComment(commentData);
@@ -284,18 +316,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if current user liked post
-  app.get("/api/posts/:id/likes/me", async (req, res) => {
+  app.get("/api/posts/:id/likes/me", isAuthenticated, async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
+      const user = req.user as any;
       
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const liked = await storage.checkUserLikedPost(postId, currentUser.id);
+      const liked = await storage.checkUserLikedPost(postId, user.id);
       
       res.json(liked);
     } catch (error) {
@@ -304,20 +330,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Like post
-  app.post("/api/posts/:id/likes", async (req, res) => {
+  app.post("/api/posts/:id/likes", isAuthenticated, async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
-      
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const likeData = insertLikeSchema.parse({
         postId,
-        userId: currentUser.id,
+        userId: user.id,
         type: "like"
       });
       
@@ -334,18 +354,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unlike post
-  app.delete("/api/posts/:id/likes", async (req, res) => {
+  app.delete("/api/posts/:id/likes", isAuthenticated, async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
+      const user = req.user as any;
       
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      await storage.deleteLike(postId, currentUser.id);
+      await storage.deleteLike(postId, user.id);
       
       res.status(204).send();
     } catch (error) {
@@ -374,18 +388,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create event
-  app.post("/api/events", async (req, res) => {
+  app.post("/api/events", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const eventData = insertEventSchema.parse({
         ...req.body,
-        createdBy: currentUser.id
+        createdBy: user.id
       });
       
       const event = await storage.createEvent(eventData);
@@ -411,18 +420,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create group
-  app.post("/api/groups", async (req, res) => {
+  app.post("/api/groups", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const groupData = insertGroupSchema.parse({
         ...req.body,
-        createdBy: currentUser.id
+        createdBy: user.id
       });
       
       const group = await storage.createGroup(groupData);
@@ -438,18 +442,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create connection
-  app.post("/api/connections", async (req, res) => {
+  app.post("/api/connections", isAuthenticated, async (req, res) => {
     try {
-      // In a real app, this would use auth token to get the user
-      const currentUser = await storage.getUserByUsername("admin");
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const user = req.user as any;
       
       const connectionData = insertConnectionSchema.parse({
         ...req.body,
-        requesterId: currentUser.id
+        requesterId: user.id
       });
       
       const connection = await storage.createConnection(connectionData);
