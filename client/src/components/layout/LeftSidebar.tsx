@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { NavItem } from "@/lib/types";
 import { User, Event } from "@shared/schema";
 import EventCard from "@/components/events/EventCard";
+import { safeString } from "@/lib/utils";
 
 const LeftSidebar = () => {
   const [location] = useLocation();
@@ -67,7 +68,7 @@ const LeftSidebar = () => {
           <div className="h-24 bg-secondary-light relative">
             <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 p-1 bg-white rounded-full">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={currentUser.profileImage ?? undefined} alt="Profile" />
+                <AvatarImage src={safeString(currentUser.profileImage)} alt="Profile" />
                 <AvatarFallback>{currentUser.fullName.substring(0, 2)}</AvatarFallback>
               </Avatar>
             </div>

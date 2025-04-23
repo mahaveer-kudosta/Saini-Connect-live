@@ -20,6 +20,7 @@ import { PostWithUser, CommentWithUser } from "@/lib/types";
 import PostComment from "./PostComment";
 import { apiRequest } from "@/lib/queryClient";
 import { format, formatDistanceToNow } from "date-fns";
+import { safeString } from "@/lib/utils";
 
 interface PostCardProps {
   post: PostWithUser;
@@ -99,7 +100,7 @@ const PostCard = ({ post }: PostCardProps) => {
       <CardHeader className="p-4 flex flex-row items-start justify-between">
         <div className="flex">
           <Avatar className="h-10 w-10 mr-3">
-            <AvatarImage src={post.user?.profileImage ?? undefined} alt={post.user?.fullName || 'User'} />
+            <AvatarImage src={safeString(post.user?.profileImage)} alt={post.user?.fullName || 'User'} />
             <AvatarFallback>{post.user?.fullName?.substring(0, 2) || 'U'}</AvatarFallback>
           </Avatar>
           <div>
