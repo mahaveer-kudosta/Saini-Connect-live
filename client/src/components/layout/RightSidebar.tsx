@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { User, Group } from "@shared/schema";
 import MemberCard from "@/components/connections/MemberCard";
 import GroupCard from "@/components/groups/GroupCard";
+import { safeString } from "@/lib/utils";
 
 const RightSidebar = () => {
   // Get suggested connections
@@ -29,7 +30,7 @@ const RightSidebar = () => {
             {suggestedUsers.slice(0, 3).map((user) => (
               <div key={user.id} className="flex items-center py-2 border-b border-neutral-100 last:border-0">
                 <Avatar className="h-10 w-10 mr-3">
-                  <AvatarImage src={user.profileImage} alt={user.fullName} />
+                  <AvatarImage src={safeString(user.profileImage)} alt={user.fullName} />
                   <AvatarFallback>{user.fullName.substring(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -47,9 +48,9 @@ const RightSidebar = () => {
               </div>
             ))}
             <Link href="/members">
-              <a className="block text-center mt-3 text-sm font-medium text-secondary hover:text-secondary-dark transition">
+              <div className="block text-center mt-3 text-sm font-medium text-secondary hover:text-secondary-dark transition cursor-pointer">
                 View All Suggestions
-              </a>
+              </div>
             </Link>
           </>
         ) : (
@@ -64,7 +65,7 @@ const RightSidebar = () => {
         {communityGroups && communityGroups.length > 0 ? (
           <>
             <Link href="/groups/saini-business-network">
-              <a className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition">
+              <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-white mr-3">
                   <Users className="h-6 w-6" />
                 </div>
@@ -72,11 +73,11 @@ const RightSidebar = () => {
                   <h4 className="font-medium text-neutral-800 text-sm">Saini Business Network</h4>
                   <p className="text-xs text-neutral-500">485 members</p>
                 </div>
-              </a>
+              </div>
             </Link>
             
             <Link href="/groups/saini-photography-club">
-              <a className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition">
+              <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white mr-3">
                   <Camera className="h-6 w-6" />
                 </div>
@@ -84,11 +85,11 @@ const RightSidebar = () => {
                   <h4 className="font-medium text-neutral-800 text-sm">Saini Photography Club</h4>
                   <p className="text-xs text-neutral-500">238 members</p>
                 </div>
-              </a>
+              </div>
             </Link>
             
             <Link href="/groups/saini-heritage-culture">
-              <a className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition">
+              <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-white mr-3">
                   <BookOpen className="h-6 w-6" />
                 </div>
@@ -96,13 +97,13 @@ const RightSidebar = () => {
                   <h4 className="font-medium text-neutral-800 text-sm">Saini Heritage & Culture</h4>
                   <p className="text-xs text-neutral-500">692 members</p>
                 </div>
-              </a>
+              </div>
             </Link>
             
             <Link href="/groups">
-              <a className="block text-center mt-3 text-sm font-medium text-secondary hover:text-secondary-dark transition">
+              <div className="block text-center mt-3 text-sm font-medium text-secondary hover:text-secondary-dark transition cursor-pointer">
                 Discover More Groups
-              </a>
+              </div>
             </Link>
           </>
         ) : (
@@ -117,9 +118,9 @@ const RightSidebar = () => {
           Our community thrives on respect and kindness. Please review our guidelines to maintain a positive space for all members.
         </p>
         <Link href="/guidelines">
-          <a className="text-sm font-medium text-secondary hover:text-secondary-dark transition">
+          <div className="text-sm font-medium text-secondary hover:text-secondary-dark transition cursor-pointer">
             Read Guidelines
-          </a>
+          </div>
         </Link>
       </div>
     </div>
