@@ -12,55 +12,43 @@ const Home = () => {
   const { data: currentUser } = useQuery<User | null>({
     queryKey: ["/api/users/me"],
   });
-  
+
   // Get posts for feed
-  const { data: posts, isLoading: isLoadingPosts } = useQuery<PostWithUser[]>({
+  const { data: posts = [], isLoading: isLoadingPosts } = useQuery<PostWithUser[]>({
     queryKey: ["/api/posts"],
     queryFn: async () => {
-      const response = await fetch("/api/posts", { credentials: "include" });
+      const response = await fetch("/api/posts", {
+        credentials: "include"
+      });
       if (!response.ok) throw new Error("Failed to fetch posts");
       return response.json();
     }
   });
 
   return (
-    <div className="container mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+    <div className="flex gap-4 px-4 py-4 max-w-7xl mx-auto">
       {/* Left Sidebar */}
       <LeftSidebar />
-      
+
       {/* Main Content */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 max-w-xl w-full mx-auto">
         {/* Create Post */}
-        <CreatePost currentUser={currentUser} />
-        
-        {/* Community Highlight */}
-        <div className="bg-gradient-to-r from-secondary to-secondary-dark rounded-xl shadow-sm p-6 text-white">
-          <div className="flex flex-col md:flex-row md:items-center justify-between">
-            <div className="mb-4 md:mb-0">
-              <h2 className="font-poppins font-bold text-2xl">Welcome to Saini Community</h2>
-              <p className="mt-1 text-secondary-light text-sm">Connect with 5,000+ members around the world</p>
-            </div>
-            <div>
-              <Button className="bg-white text-secondary font-medium hover:bg-neutral-100 transition">
-                Invite Members
-              </Button>
-            </div>
-          </div>
+        <div className="mb-4">
+          <CreatePost />
         </div>
-        
+
         {/* Posts Feed */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {isLoadingPosts ? (
-            <div className="text-center py-8">
-              <p>Loading posts...</p>
-            </div>
-          ) : posts && posts.length > 0 ? (
+            <div className="text-center py-8">Loading posts...</div>
+          ) : posts.length > 0 ? (
             <>
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-              
-              <div className="text-center py-8">
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </div>
+              <div className="text-center mt-4">
                 <Button className="bg-white text-secondary font-medium px-6 py-2 rounded-lg border border-secondary hover:bg-secondary hover:text-white transition">
                   Load More Posts
                 </Button>
@@ -77,7 +65,7 @@ const Home = () => {
           )}
         </div>
       </div>
-      
+
       {/* Right Sidebar */}
       <RightSidebar />
     </div>
