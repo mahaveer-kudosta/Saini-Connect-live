@@ -46,9 +46,14 @@ const Header = () => {
         <div className="hidden md:flex items-center flex-1 max-w-lg mx-6">
           <div className="relative w-full">
             <Input
-              type="text"
+              type="text" 
               placeholder="Search members, posts, events..."
               className="w-full py-2 pl-10 pr-4 rounded-full bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-secondary transition"
+              onChange={(e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                // Update the search term in React Query cache
+                queryClient.setQueryData(["/api/search"], searchTerm);
+              }}
             />
             <div className="absolute left-3 top-2.5 text-neutral-400">
               <SearchIcon className="h-5 w-5" />

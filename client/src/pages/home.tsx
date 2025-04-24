@@ -13,7 +13,7 @@ const Home = () => {
     queryKey: ["/api/users/me"],
   });
 
-  // Get posts for feed
+  // Get posts for feed and search term
   const { data: posts = [], isLoading: isLoadingPosts } = useQuery<PostWithUser[]>({
     queryKey: ["/api/posts"],
     queryFn: async () => {
@@ -24,6 +24,18 @@ const Home = () => {
       return response.json();
     }
   });
+
+  const { data: searchTerm = "" } = useQuery<string>({
+    queryKey: ["/api/search"],
+    initialData: "",
+  });
+
+  // Filter posts based on search term
+  const filteredPosts = posts?.filter(post => 
+    !searchTerm || 
+    post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    post.user.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="flex gap-4 px-4 py-4 max-w-7xl mx-auto">
@@ -41,10 +53,10 @@ const Home = () => {
         <div className="space-y-4">
           {isLoadingPosts ? (
             <div className="text-center py-8">Loading posts...</div>
-          ) : posts.length > 0 ? (
+          ) : filteredPosts.length > 0 ? (
             <>
               <div className="space-y-4">
-                {posts.map((post) => (
+                {filteredPosts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
               </div>
