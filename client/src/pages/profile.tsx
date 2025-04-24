@@ -39,6 +39,13 @@ const Profile = () => {
     PostWithUser[]
   >({
     queryKey: ["/api/users/me/posts"],
+    queryFn: async () => {
+      const response = await fetch("/api/users/me/posts", {
+        credentials: "include"
+      });
+      if (!response.ok) throw new Error("Failed to fetch user posts");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
