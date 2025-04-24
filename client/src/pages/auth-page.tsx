@@ -1,123 +1,59 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useLocation } from "wouter";
-import { AlertCircle, Mail } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-// Login form schema
+// Login schema
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-// Registration form schema
+// Register schema
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
-  fullName: z.string().min(3, "Full name is required"),
+  fullName: z.string().min(3, "Full name must be at least 3 characters"),
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(8, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-// Password reset form schema
+// Reset password schema
 const resetPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email"),
 });
 
+// Types for form values
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function AuthPage() {
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("login");
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = React.useState("login");
-  const [showResetForm, setShowResetForm] = React.useState(false);
+  const { user, login, register, resetPassword } = useAuth();
 
-  // Login Mutation
-  const loginMutation = useMutation({
-    mutationFn: async (data: LoginFormValues) => {
-      const res = await apiRequest("POST", "/api/login", data);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
-      toast({
-        title: "Login successful",
-        description: "Welcome back to Saini Connect!",
-      });
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
       navigate("/");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Login failed",
-        description: error.message || "Please check your credentials and try again",
-        variant: "destructive",
-      });
-    },
-  });
+    }
+  }, [user, navigate]);
 
-  // Register Mutation
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterFormValues) => {
-      const { confirmPassword, ...userData } = data;
-      const res = await apiRequest("POST", "/api/register", userData);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
-      toast({
-        title: "Registration successful",
-        description: "Welcome to Saini Connect!",
-      });
-      navigate("/");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Registration failed",
-        description: error.message || "Please check your information and try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Reset Password Mutation
-  const resetPasswordMutation = useMutation({
-    mutationFn: async (data: ResetPasswordFormValues) => {
-      const res = await apiRequest("POST", "/api/reset-password", data);
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Password reset email sent",
-        description: data.message || "Check your email for instructions to reset your password",
-      });
-      setShowResetForm(false);
-      setActiveTab("login");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Password reset failed",
-        description: error.message || "Please check your email and try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Login form
+  // Form hooks
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -126,7 +62,6 @@ export default function AuthPage() {
     },
   });
 
-  // Register form
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -138,7 +73,6 @@ export default function AuthPage() {
     },
   });
 
-  // Reset password form
   const resetPasswordForm = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -146,336 +80,301 @@ export default function AuthPage() {
     },
   });
 
-  // Handle login submission
-  function onLoginSubmit(data: LoginFormValues) {
-    loginMutation.mutate(data);
+  // Form submission handlers
+  async function onLoginSubmit(data: LoginFormValues) {
+    try {
+      await login(data);
+      navigate("/");
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   }
 
-  // Handle register submission
-  function onRegisterSubmit(data: RegisterFormValues) {
-    registerMutation.mutate(data);
+  async function onRegisterSubmit(data: RegisterFormValues) {
+    try {
+      // Remove confirmPassword as it's not in the API
+      const { confirmPassword, ...userData } = data;
+      await register(userData);
+      navigate("/");
+    } catch (error) {
+      console.error("Registration error:", error);
+    }
   }
 
-  // Handle reset password submission
-  function onResetPasswordSubmit(data: ResetPasswordFormValues) {
-    resetPasswordMutation.mutate(data);
+  async function onResetPasswordSubmit(data: ResetPasswordFormValues) {
+    try {
+      await resetPassword(data);
+      setShowResetPassword(false);
+      setActiveTab("login");
+    } catch (error) {
+      console.error("Reset password error:", error);
+    }
+  }
+
+  if (showResetPassword) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-neutral-50">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle>Reset Password</CardTitle>
+              <CardDescription>
+                Enter your email address and we'll send you a link to reset your password.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...resetPasswordForm}>
+                <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter your email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-between">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowResetPassword(false)}
+                    >
+                      Back to Login
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={resetPasswordForm.formState.isSubmitting}
+                    >
+                      {resetPasswordForm.formState.isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Send Reset Link"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Form Section */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center p-8">
-        <div className="max-w-md mx-auto w-full">
-          <h1 className="text-3xl font-extrabold mb-2 text-center">Saini Connect</h1>
-          <p className="text-center text-muted-foreground mb-8">
-            Connect with the Saini community worldwide
-          </p>
-
-          {showResetForm ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Reset Password</CardTitle>
-                <CardDescription>
-                  Enter your email to receive password reset instructions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...resetPasswordForm}>
-                  <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
-                    <FormField
-                      control={resetPasswordForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="your.email@example.com" 
-                              {...field} 
-                              disabled={resetPasswordMutation.isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={resetPasswordMutation.isPending}
-                    >
-                      {resetPasswordMutation.isPending ? "Sending..." : "Send Reset Link"}
-                    </Button>
-                    
-                    <div className="text-center">
-                      <Button variant="link" onClick={() => setShowResetForm(false)}>
-                        Back to Login
+    <div className="flex min-h-screen bg-gradient-to-br from-primary-50 to-white">
+      {/* Left column - Forms */}
+      <div className="w-full md:w-1/2 p-4 md:p-8 flex items-center justify-center">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center md:text-left">
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Welcome to SainiConnect</h1>
+            <p className="text-muted-foreground mt-2">Login or create an account to get started</p>
+          </div>
+          
+          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Login to your account</CardTitle>
+                  <CardDescription>
+                    Enter your username and password to access your account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Enter your password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={loginForm.formState.isSubmitting}
+                      >
+                        {loginForm.formState.isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Logging in...
+                          </>
+                        ) : (
+                          "Login"
+                        )}
                       </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          ) : (
-            <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Login to Your Account</CardTitle>
-                    <CardDescription>
-                      Enter your credentials to access your account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...loginForm}>
-                      <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                        <FormField
-                          control={loginForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Username</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter your username" 
-                                  {...field} 
-                                  disabled={loginMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={loginForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="password" 
-                                  placeholder="Enter your password" 
-                                  {...field} 
-                                  disabled={loginMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <Button 
-                          type="submit" 
-                          className="w-full"
-                          disabled={loginMutation.isPending}
-                        >
-                          {loginMutation.isPending ? "Logging in..." : "Login"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                  <CardFooter className="flex justify-center">
-                    <Button variant="link" onClick={() => setShowResetForm(true)}>
-                      Forgot your password?
-                    </Button>
-                  </CardFooter>
-                </Card>
-                
-                <div className="mt-4">
-                  <Alert>
-                    <Mail className="h-4 w-4" />
-                    <AlertDescription>
-                      Try logging in with our demo account: <strong>demo / demo123</strong>
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="register">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Create a New Account</CardTitle>
-                    <CardDescription>
-                      Join the Saini community platform
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...registerForm}>
-                      <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Username</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Choose a username" 
-                                  {...field} 
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="fullName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Full Name</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter your full name" 
-                                  {...field} 
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="email" 
-                                  placeholder="your.email@example.com" 
-                                  {...field} 
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="password" 
-                                  placeholder="Create a strong password" 
-                                  {...field} 
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="confirmPassword"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Confirm Password</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="password" 
-                                  placeholder="Confirm your password" 
-                                  {...field} 
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <Button 
-                          type="submit" 
-                          className="w-full"
-                          disabled={registerMutation.isPending}
-                        >
-                          {registerMutation.isPending ? "Creating account..." : "Register"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          )}
+                    </form>
+                  </Form>
+                </CardContent>
+                <CardFooter className="flex flex-col items-center">
+                  <Button 
+                    variant="link" 
+                    onClick={() => setShowResetPassword(true)}
+                    className="px-0 text-sm text-muted-foreground"
+                  >
+                    Forgot your password?
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create an account</CardTitle>
+                  <CardDescription>
+                    Join our community of Saini professionals
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Choose a username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your full name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="Enter your email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Create a password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Confirm your password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={registerForm.formState.isSubmitting}
+                      >
+                        {registerForm.formState.isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating account...
+                          </>
+                        ) : (
+                          "Create Account"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
       
-      {/* Hero Section */}
-      <div className="hidden lg:block lg:w-1/2 bg-gradient-to-br from-primary/20 to-primary/5">
-        <div className="flex flex-col justify-center items-center h-full p-12">
-          <div className="max-w-md text-center">
-            <h2 className="text-4xl font-bold mb-4">Welcome to Saini Connect</h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              The exclusive social network for the Saini community worldwide
-            </p>
-            <div className="space-y-6">
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-3 rounded-full mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Connect with family & friends</h3>
-                  <p className="text-sm text-muted-foreground">Find and connect with Saini community members around the world</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-3 rounded-full mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Discover community events</h3>
-                  <p className="text-sm text-muted-foreground">Find and participate in local and virtual Saini community events</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-3 rounded-full mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Join interest groups</h3>
-                  <p className="text-sm text-muted-foreground">Participate in groups based on shared interests, profession, or location</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="bg-primary/10 p-3 rounded-full mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Share your heritage</h3>
-                  <p className="text-sm text-muted-foreground">Preserve and celebrate Saini traditions, stories, and cultural heritage</p>
-                </div>
-              </div>
+      {/* Right column - Hero Image and Info */}
+      <div className="hidden md:flex md:w-1/2 bg-primary-100 flex-col justify-center items-center p-8">
+        <div className="max-w-md text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-primary-dark mb-4">
+            Connect with the Saini Community
+          </h2>
+          <p className="text-primary-dark/80 mb-8">
+            Join our growing network of Saini professionals, share experiences, attend events, and build meaningful connections within our community.
+          </p>
+          <div className="grid grid-cols-2 gap-4 text-primary-dark/80">
+            <div className="p-4 bg-white/50 rounded-lg">
+              <h3 className="font-semibold text-lg text-primary-dark">Find Events</h3>
+              <p>Discover and participate in community events near you</p>
+            </div>
+            <div className="p-4 bg-white/50 rounded-lg">
+              <h3 className="font-semibold text-lg text-primary-dark">Join Groups</h3>
+              <p>Connect with others who share your interests and profession</p>
+            </div>
+            <div className="p-4 bg-white/50 rounded-lg">
+              <h3 className="font-semibold text-lg text-primary-dark">Build Network</h3>
+              <p>Expand your professional network within the community</p>
+            </div>
+            <div className="p-4 bg-white/50 rounded-lg">
+              <h3 className="font-semibold text-lg text-primary-dark">Share Updates</h3>
+              <p>Post updates and stay connected with community members</p>
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ import Header from "@/components/layout/Header";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function Router() {
   return (
@@ -29,20 +30,25 @@ function Router() {
   );
 }
 
+// Create a client
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <AuthProvider>
-      <TooltipProvider>
-        <div className="flex flex-col h-screen">
-          <Header />
-          <main className="flex-1 overflow-auto pb-14 md:pb-0">
-            <Router />
-          </main>
-          <MobileNavigation />
-          <Toaster />
-        </div>
-      </TooltipProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <div className="flex flex-col h-screen">
+            <Header />
+            <main className="flex-1 overflow-auto pb-14 md:pb-0">
+              <Router />
+            </main>
+            <MobileNavigation />
+            <Toaster />
+          </div>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
