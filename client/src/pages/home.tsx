@@ -16,6 +16,8 @@ const Home = () => {
   // Get posts for feed
   const { data: posts, isLoading: isLoadingPosts } = useQuery<PostWithUser[]>({
     queryKey: ["/api/posts"],
+    refetchOnWindowFocus: false,
+    refetchOnMount: true
   });
 
   return (
