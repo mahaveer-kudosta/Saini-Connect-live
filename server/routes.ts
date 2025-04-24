@@ -200,11 +200,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
+      const { parentId } = req.body;
       
       const commentData = insertCommentSchema.parse({
         ...req.body,
         postId,
-        userId: user.id
+        userId: user.id,
+        parentId: parentId || null
       });
       
       const comment = await storage.createComment(commentData);

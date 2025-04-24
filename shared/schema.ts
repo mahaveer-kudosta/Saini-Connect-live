@@ -42,6 +42,7 @@ export const comments = pgTable("comments", {
   userId: integer("user_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  parentId: integer("parent_id")
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
