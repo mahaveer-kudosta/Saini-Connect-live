@@ -191,6 +191,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const post = await storage.createPost(postData);
+      
+      // Get all users except post creator to send notifications
+      const users = await storage.getAllUsers();
+      const otherUsers = users.filter(u => u.id !== user.id);
+
+      // Create notifications for all other users
+      for (const otherUser of otherUsers) {
+        await storage.createNotification({
+          userId: otherUser.id,
+          type: "new_post",
+          message: `${user.fullName} created a new post`,
+          read: false
+        });
+      }
 
       res.status(201).json(post);
     } catch (error) {

@@ -880,7 +880,7 @@ export class DatabaseStorage implements IStorage {
       .insert(connections)
       .values(connection)      .returning();
     return newConnection;
-  }
+    }
 
   async getConnection(id: number): Promise<Connection | undefined> {
     const [connection] = await db.select().from(connections).where(eq(connections.id, id));
@@ -930,9 +930,10 @@ export class DatabaseStorage implements IStorage {
     return updatedNotification;
   }
 
-  async createNotification(data: { userId: number; type: string; message: string }): Promise<Notification> {
-    const [newNotification] = await db.insert(notifications)
-      .values({ ...data, createdAt: new Date(), read: false })
+  async createNotification(notification: { userId: number; type: string; message: string; read: boolean }): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values({ ...notification, createdAt: new Date() })
       .returning();
     return newNotification;
   }
