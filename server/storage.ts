@@ -718,35 +718,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCommentsByPostId(postId: number): Promise<Comment[]> {
-    const results = await db
-      .select({
-        id: comments.id,
-        postId: comments.postId,
-        userId: comments.userId,
-        content: comments.content,
-        createdAt: comments.createdAt,
-        parentId: comments.parentId,
-        user: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          profileImage: users.profileImage
-        }
-      })
+    return db
+      .select()
       .from(comments)
-      .leftJoin(users, eq(comments.userId, users.id))
       .where(eq(comments.postId, postId))
       .orderBy(comments.createdAt);
-
-    return results.map(result => ({
-      ...result,
-      user: {
-        id: result.user.id,
-        username: result.user.username,
-        fullName: result.user.fullName,
-        profileImage: result.user.profileImage
-      }
-    }));
   }
 
   async createLike(like: InsertLike): Promise<Like> {

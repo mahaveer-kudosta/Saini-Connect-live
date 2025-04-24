@@ -29,7 +29,7 @@ interface PostCardProps {
 const PostCard = ({ post }: PostCardProps) => {
   const [commentText, setCommentText] = useState("");
   const [showAllComments, setShowAllComments] = useState(false);
-
+  
   // Get post comments
   const { data: comments = [] } = useQuery<CommentWithUser[]>({
     queryKey: [`/api/posts/${post.id}/comments`],
@@ -41,7 +41,7 @@ const PostCard = ({ post }: PostCardProps) => {
       return response.json();
     }
   });
-
+  
   // Get like count
   const { data: likeCount = 0 } = useQuery<number>({
     queryKey: [`/api/posts/${post.id}/likes/count`],
@@ -53,7 +53,7 @@ const PostCard = ({ post }: PostCardProps) => {
       return response.json();
     }
   });
-
+  
   // Check if current user has liked the post
   const { data: isLiked = false } = useQuery<boolean>({
     queryKey: [`/api/posts/${post.id}/likes/me`],
@@ -81,45 +81,36 @@ const PostCard = ({ post }: PostCardProps) => {
 
   // Add comment mutation
   const commentMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/posts/${post.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ content: commentText }),
+    mutationFn: async (content: string) => {
+      return apiRequest("POST", `/api/posts/${post.id}/comments`, { 
+        postId: post.id, 
+        content 
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to comment");
-      }
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/posts/${post.id}/comments`] });
       setCommentText("");
-    },
+    }
   });
 
   // Parse images array from post.images (it's stored as a JSON string in the database)
   const images = Array.isArray(post.images) ? post.images : [];
-
+  
   // Format the post date
   const postDate = new Date(post.createdAt);
   const timeAgo = formatDistanceToNow(postDate, { addSuffix: false });
-
+  
   const handleLike = () => {
     likeMutation.mutate();
   };
-
+  
   const handleComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (commentText.trim()) {
-      commentMutation.mutate();
+      commentMutation.mutate(commentText);
     }
   };
-
+  
   const handleShowComments = () => {
     setShowAllComments(true);
   };
@@ -149,17 +140,17 @@ const PostCard = ({ post }: PostCardProps) => {
           <MoreHorizontal className="h-5 w-5" />
         </Button>
       </CardHeader>
-
+      
       {/* Post Content */}
       <CardContent className="px-4 pb-3">
         <p className="text-neutral-800 mb-3">{post.content}</p>
-
+        
         {images.length === 1 && (
           <div className="rounded-lg overflow-hidden">
             <img src={images[0]} alt="Post content" className="w-full h-auto object-cover" />
           </div>
         )}
-
+        
         {images.length === 2 && (
           <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
             {images.map((image, index) => (
@@ -172,7 +163,7 @@ const PostCard = ({ post }: PostCardProps) => {
             ))}
           </div>
         )}
-
+        
         {images.length > 2 && (
           <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
             {images.slice(0, 4).map((image, index) => (
@@ -186,7 +177,7 @@ const PostCard = ({ post }: PostCardProps) => {
           </div>
         )}
       </CardContent>
-
+      
       {/* Post Stats */}
       <div className="px-4 py-2 border-t border-b border-neutral-100 flex items-center justify-between">
         <div className="flex items-center text-neutral-500 text-sm">
@@ -203,7 +194,7 @@ const PostCard = ({ post }: PostCardProps) => {
           <span>0 shares</span>
         </div>
       </div>
-
+      
       {/* Post Actions */}
       <div className="px-4 py-2 flex border-b border-neutral-100">
         <Button 
@@ -216,7 +207,7 @@ const PostCard = ({ post }: PostCardProps) => {
           <Heart className={`h-5 w-5 mr-1.5 ${isLiked ? "fill-current" : ""}`} />
           Like
         </Button>
-
+        
         <Button 
           variant="ghost" 
           className="flex-1 flex items-center justify-center py-1.5 text-neutral-600 hover:bg-neutral-50 rounded-lg transition"
@@ -224,7 +215,7 @@ const PostCard = ({ post }: PostCardProps) => {
           <MessageSquare className="h-5 w-5 mr-1.5" />
           Comment
         </Button>
-
+        
         <Button 
           variant="ghost" 
           className="flex-1 flex items-center justify-center py-1.5 text-neutral-600 hover:bg-neutral-50 rounded-lg transition"
@@ -233,7 +224,7 @@ const PostCard = ({ post }: PostCardProps) => {
           Share
         </Button>
       </div>
-
+      
       {/* Comments */}
       <CardFooter className="px-4 py-2 flex flex-col">
         {/* Comment list */}
@@ -243,7 +234,7 @@ const PostCard = ({ post }: PostCardProps) => {
             {(showAllComments ? comments : comments.slice(0, 1)).map((comment) => (
               <PostComment key={comment.id} comment={comment} />
             ))}
-
+            
             {/* Show more comments button */}
             {!showAllComments && comments.length > 1 && (
               <Button 
@@ -256,7 +247,7 @@ const PostCard = ({ post }: PostCardProps) => {
             )}
           </div>
         )}
-
+        
         {/* Comment input */}
         <form onSubmit={handleComment} className="flex w-full">
           <Avatar className="h-8 w-8 mr-2">

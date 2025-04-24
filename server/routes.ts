@@ -200,29 +200,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
-      const { content, parentId } = req.body;
       
-      const commentData = {
+      const commentData = insertCommentSchema.parse({
+        ...req.body,
         postId,
-        userId: user.id,
-        content,
-        parentId: parentId || null
-      };
+        userId: user.id
+      });
       
       const comment = await storage.createComment(commentData);
-      const commentWithUser = {
-        ...comment,
-        user: {
-          id: user.id,
-          username: user.username,
-          fullName: user.fullName,
-          profileImage: user.profileImage
-        }
-      };
       
-      res.status(201).json(commentWithUser);
+      res.status(201).json(comment);
     } catch (error) {
-      console.error('Error creating comment:', error);
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
