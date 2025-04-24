@@ -6,6 +6,7 @@ import Home from "@/pages/home";
 import Members from "@/pages/members";
 import Events from "@/pages/events";
 import Groups from "@/pages/groups";
+import Notifications from "@/pages/notifications";
 import Profile from "@/pages/profile";
 import Guidelines from "@/pages/guidelines";
 import AuthPage from "@/pages/auth-page";
