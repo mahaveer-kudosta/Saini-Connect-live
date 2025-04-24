@@ -22,6 +22,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
 
+  // Get user notifications
+  app.get("/api/notifications", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const notifications = await storage.getNotificationsByUserId(user.id);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id", isAuthenticated, async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      const notification = await storage.getNotification(notificationId);
+      if (!notification || notification.userId !== user.id) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      await storage.markNotificationAsRead(notificationId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
   // API error handling middleware
   app.use("/api/*", (req, res, next) => {
     next();

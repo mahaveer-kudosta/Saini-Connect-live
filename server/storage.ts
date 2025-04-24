@@ -22,7 +22,10 @@ import {
   type InsertConnection, 
   groupMembers, 
   type GroupMember, 
-  type InsertGroupMember 
+  type InsertGroupMember,
+  notifications, // Added import for notifications schema
+  type Notification,
+  type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gt, or } from "drizzle-orm";
@@ -65,7 +68,7 @@ export interface IStorage {
   createGroup(group: InsertGroup): Promise<Group>;
   getGroup(id: number): Promise<Group | undefined>;
   getAllGroups(): Promise<Group[]>;
-  
+
   // Group member operations
   addGroupMember(groupMember: InsertGroupMember): Promise<GroupMember>;
   getGroupMembers(groupId: number): Promise<GroupMember[]>;
@@ -75,6 +78,12 @@ export interface IStorage {
   getConnection(id: number): Promise<Connection | undefined>;
   getUserConnections(userId: number): Promise<Connection[]>;
   updateConnectionStatus(id: number, status: string): Promise<Connection>;
+
+  // Notification operations
+  getNotificationsByUserId(userId: number): Promise<Notification[]>;
+  getNotification(id: number): Promise<Notification | undefined>;
+  markNotificationAsRead(id: number): Promise<Notification>;
+  createNotification(data: { userId: number; type: string; message: string }): Promise<Notification>;
 }
 
 export class MemStorage implements IStorage {
@@ -86,7 +95,8 @@ export class MemStorage implements IStorage {
   private groups: Map<number, Group>;
   private groupMembers: Map<number, GroupMember>;
   private connections: Map<number, Connection>;
-  
+  private notifications: Map<number, Notification>; // Added notifications map
+
   private userIdCounter: number;
   private postIdCounter: number;
   private commentIdCounter: number;
@@ -95,6 +105,7 @@ export class MemStorage implements IStorage {
   private groupIdCounter: number;
   private groupMemberIdCounter: number;
   private connectionIdCounter: number;
+  private notificationIdCounter: number; // Added notification ID counter
 
   constructor() {
     this.users = new Map();
@@ -105,7 +116,8 @@ export class MemStorage implements IStorage {
     this.groups = new Map();
     this.groupMembers = new Map();
     this.connections = new Map();
-    
+    this.notifications = new Map(); // Initialize notifications map
+
     this.userIdCounter = 1;
     this.postIdCounter = 1;
     this.commentIdCounter = 1;
@@ -114,14 +126,15 @@ export class MemStorage implements IStorage {
     this.groupIdCounter = 1;
     this.groupMemberIdCounter = 1;
     this.connectionIdCounter = 1;
-    
+    this.notificationIdCounter = 1; // Initialize notification ID counter
+
     // Initialize with sample data
     this.initializeData();
   }
 
   private initializeData(): void {
     const { hashPassword } = require('./index');
-    
+
     // Create admin user
     this.createUser({
       username: "admin",
@@ -134,7 +147,7 @@ export class MemStorage implements IStorage {
       location: "Delhi, India",
       occupation: "Software Engineer"
     });
-    
+
     // Create additional users
     this.createUser({
       username: "rajesh",
@@ -146,7 +159,7 @@ export class MemStorage implements IStorage {
       location: "Mumbai, India",
       occupation: "Business Owner"
     });
-    
+
     this.createUser({
       username: "priya",
       password: hashPassword("password123"),
@@ -157,7 +170,7 @@ export class MemStorage implements IStorage {
       location: "Jaipur, India",
       occupation: "Food Blogger"
     });
-    
+
     this.createUser({
       username: "vikram",
       password: hashPassword("password123"),
@@ -168,7 +181,7 @@ export class MemStorage implements IStorage {
       location: "Bangalore, India",
       occupation: "Software Engineer"
     });
-    
+
     this.createUser({
       username: "meera",
       password: hashPassword("password123"),
@@ -179,7 +192,7 @@ export class MemStorage implements IStorage {
       location: "Chennai, India",
       occupation: "Doctor"
     });
-    
+
     // Demo user for testing
     this.createUser({
       username: "demo",
@@ -191,12 +204,12 @@ export class MemStorage implements IStorage {
       location: "New Delhi, India",
       occupation: "Student"
     });
-    
+
     // Create sample posts
     const adminUser = this.getUserByUsername("admin");
     const rajeshUser = this.getUserByUsername("rajesh");
     const priyaUser = this.getUserByUsername("priya");
-    
+
     if (adminUser && rajeshUser && priyaUser) {
       // Post by Rajesh
       const post1 = this.createPost({
@@ -205,7 +218,7 @@ export class MemStorage implements IStorage {
         images: ["https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80"],
         visibility: "public"
       });
-      
+
       // Post by Priya
       const post2 = this.createPost({
         userId: priyaUser.id,
@@ -216,46 +229,46 @@ export class MemStorage implements IStorage {
         ],
         visibility: "public"
       });
-      
+
       // Add comments
       this.createComment({
         postId: post1.id,
         userId: adminUser.id,
         content: "This is such a valuable initiative! Will definitely share with my cousins."
       });
-      
+
       this.createComment({
         postId: post2.id,
         userId: rajeshUser.id,
         content: "Wow! Looks delicious. I'm absolutely interested in the cooking session. My grandmother had a special way to make it too with some secret ingredients!"
       });
-      
+
       // Add likes
       this.createLike({
         postId: post1.id,
         userId: adminUser.id,
         type: "like"
       });
-      
+
       this.createLike({
         postId: post1.id,
         userId: priyaUser.id,
         type: "like"
       });
-      
+
       this.createLike({
         postId: post2.id,
         userId: adminUser.id,
         type: "like"
       });
-      
+
       this.createLike({
         postId: post2.id,
         userId: rajeshUser.id,
         type: "like"
       });
     }
-    
+
     // Create sample events
     this.createEvent({
       title: "Saini Cultural Festival",
@@ -266,7 +279,7 @@ export class MemStorage implements IStorage {
       image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80",
       createdBy: adminUser?.id || 1
     });
-    
+
     this.createEvent({
       title: "Community Meetup",
       description: "Virtual networking event for Saini community members around the world.",
@@ -275,7 +288,7 @@ export class MemStorage implements IStorage {
       endDate: new Date("2023-07-15T20:30:00Z"),
       createdBy: adminUser?.id || 1
     });
-    
+
     // Create sample groups
     const businessGroup = this.createGroup({
       name: "Saini Business Network",
@@ -283,21 +296,21 @@ export class MemStorage implements IStorage {
       image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80",
       createdBy: rajeshUser?.id || 2
     });
-    
+
     const photographyGroup = this.createGroup({
       name: "Saini Photography Club",
       description: "Share your photography, get feedback, and connect with fellow photographers.",
       image: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80",
       createdBy: priyaUser?.id || 3
     });
-    
+
     const heritageGroup = this.createGroup({
       name: "Saini Heritage & Culture",
       description: "Preserving and celebrating our rich cultural heritage and traditions.",
       image: "https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1024&q=80",
       createdBy: adminUser?.id || 1
     });
-    
+
     // Add group members
     if (businessGroup && adminUser && rajeshUser && priyaUser) {
       this.addGroupMember({
@@ -305,59 +318,59 @@ export class MemStorage implements IStorage {
         userId: adminUser.id,
         role: "member"
       });
-      
+
       this.addGroupMember({
         groupId: businessGroup.id,
         userId: rajeshUser.id,
         role: "admin"
       });
-      
+
       // Update member count
       this.groups.set(businessGroup.id, {
         ...businessGroup,
         memberCount: 2
       });
     }
-    
+
     if (photographyGroup && adminUser && priyaUser) {
       this.addGroupMember({
         groupId: photographyGroup.id,
         userId: adminUser.id,
         role: "member"
       });
-      
+
       this.addGroupMember({
         groupId: photographyGroup.id,
         userId: priyaUser.id,
         role: "admin"
       });
-      
+
       // Update member count
       this.groups.set(photographyGroup.id, {
         ...photographyGroup,
         memberCount: 2
       });
     }
-    
+
     if (heritageGroup && adminUser && rajeshUser && priyaUser) {
       this.addGroupMember({
         groupId: heritageGroup.id,
         userId: adminUser.id,
         role: "admin"
       });
-      
+
       this.addGroupMember({
         groupId: heritageGroup.id,
         userId: rajeshUser.id,
         role: "member"
       });
-      
+
       this.addGroupMember({
         groupId: heritageGroup.id,
         userId: priyaUser.id,
         role: "member"
       });
-      
+
       // Update member count
       this.groups.set(heritageGroup.id, {
         ...heritageGroup,
@@ -397,12 +410,12 @@ export class MemStorage implements IStorage {
     if (!existingUser) {
       throw new Error(`User with ID ${id} not found`);
     }
-    
+
     const updatedUser: User = {
       ...existingUser,
       ...userData
     };
-    
+
     this.users.set(id, updatedUser);
     return updatedUser;
   }
@@ -469,7 +482,7 @@ export class MemStorage implements IStorage {
     if (existingLike) {
       return existingLike;
     }
-    
+
     const id = this.likeIdCounter++;
     const now = new Date();
     const like: Like = {
@@ -553,14 +566,14 @@ export class MemStorage implements IStorage {
       createdAt: now
     };
     this.groups.set(id, group);
-    
+
     // Add the creator as an admin member
     await this.addGroupMember({
       groupId: id,
       userId: groupData.createdBy,
       role: "admin"
     });
-    
+
     return group;
   }
 
@@ -582,14 +595,14 @@ export class MemStorage implements IStorage {
       joinedAt: now
     };
     this.groupMembers.set(id, groupMember);
-    
+
     // Update group member count
     const group = await this.getGroup(memberData.groupId);
     if (group) {
       group.memberCount = (group.memberCount || 0) + 1;
       this.groups.set(group.id, group);
     }
-    
+
     return groupMember;
   }
 
@@ -606,11 +619,11 @@ export class MemStorage implements IStorage {
         (conn.requesterId === connectionData.requesterId && conn.addresseeId === connectionData.addresseeId) ||
         (conn.requesterId === connectionData.addresseeId && conn.addresseeId === connectionData.requesterId)
       );
-    
+
     if (existingConnection) {
       return existingConnection;
     }
-    
+
     const id = this.connectionIdCounter++;
     const now = new Date();
     const connection: Connection = {
@@ -636,14 +649,46 @@ export class MemStorage implements IStorage {
     if (!connection) {
       throw new Error(`Connection with ID ${id} not found`);
     }
-    
+
     const updatedConnection: Connection = {
       ...connection,
       status
     };
-    
+
     this.connections.set(id, updatedConnection);
     return updatedConnection;
+  }
+
+    // =========== Notification Operations ===========
+  async getNotificationsByUserId(userId: number): Promise<Notification[]> {
+    return Array.from(this.notifications.values()).filter(n => n.userId === userId);
+  }
+
+  async getNotification(id: number): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification> {
+    const notification = await this.getNotification(id);
+    if (!notification) {
+      throw new Error(`Notification with ID ${id} not found`);
+    }
+    notification.read = true;
+    this.notifications.set(id, notification);
+    return notification;
+  }
+
+  async createNotification(data: { userId: number; type: string; message: string }): Promise<Notification> {
+    const id = this.notificationIdCounter++;
+    const now = new Date();
+    const notification: Notification = {
+      id,
+      ...data,
+      createdAt: now,
+      read: false
+    };
+    this.notifications.set(id, notification);
+    return notification;
   }
 }
 
@@ -833,8 +878,7 @@ export class DatabaseStorage implements IStorage {
   async createConnection(connection: InsertConnection): Promise<Connection> {
     const [newConnection] = await db
       .insert(connections)
-      .values(connection)
-      .returning();
+      .values(connection)      .returning();
     return newConnection;
   }
 
@@ -862,6 +906,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(connections.id, id))
       .returning();
     return updatedConnection;
+  }
+
+  async getNotificationsByUserId(userId: number): Promise<Notification[]> {
+    return db.query.notifications.findMany({
+      where: eq(notifications.userId, userId),
+      orderBy: desc(notifications.createdAt)
+    });
+  }
+
+  async getNotification(id: number): Promise<Notification | undefined> {
+    const [notification] = await db.query.notifications.findFirst({
+      where: eq(notifications.id, id)
+    });
+    return notification;
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification> {
+    const [updatedNotification] = await db.update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updatedNotification;
+  }
+
+  async createNotification(data: { userId: number; type: string; message: string }): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications)
+      .values({ ...data, createdAt: new Date(), read: false })
+      .returning();
+    return newNotification;
   }
 }
 
