@@ -70,21 +70,40 @@ const CreatePost = ({ currentUser }: CreatePostProps) => {
     });
   };
 
-  const handleAddAttachment = (type: 'photo' | 'video') => {
+  const handleAddAttachment = async (type: 'photo' | 'video') => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = type === 'photo' ? 'image/*' : 'video/*';
-    fileInput.onchange = (e) => {
+    fileInput.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        // In a real app, this would upload the file to the server
-        // For now, we'll just add a mock URL
-        const mockUrl = URL.createObjectURL(file);
-        setAttachments([...attachments, {
-          type,
-          url: mockUrl,
-          id: Date.now().toString()
-        }]);
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to upload image');
+          }
+          
+          const { url } = await response.json();
+          setAttachments([...attachments, {
+            type,
+            url,
+            id: Date.now().toString()
+          }]);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive"
+          });
+        }
       }
     };
     fileInput.click();

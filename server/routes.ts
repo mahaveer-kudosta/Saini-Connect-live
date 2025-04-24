@@ -13,16 +13,20 @@ import {
   insertConnectionSchema,
   insertGroupMemberSchema
 } from "@shared/schema";
+import multer from 'multer';
+
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
-  
+
   // API error handling middleware
   app.use("/api/*", (req, res, next) => {
     next();
   });
-      
+
 
 
   // Update current user
@@ -30,10 +34,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as any;
       const updatedUser = await storage.updateUser(user.id, req.body);
-      
+
       // Don't expose password
       const { password, ...userWithoutPassword } = updatedUser;
-      
+
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -44,13 +48,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      
+
       // Don't expose passwords
       const usersWithoutPasswords = users.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       });
-      
+
       res.json(usersWithoutPasswords);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -61,10 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/suggested", async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      
+
       // Skip the current user if logged in
       const currentUserId = req.isAuthenticated() ? (req.user as any).id : -1;
-      
+
       // Don't expose passwords
       const usersWithoutPasswords = users
         .filter(user => user.id !== currentUserId)
@@ -72,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { password, ...userWithoutPassword } = user;
           return userWithoutPassword;
         });
-      
+
       res.json(usersWithoutPasswords);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -84,14 +88,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Don't expose password
       const { password, ...userWithoutPassword } = user;
-      
+
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -103,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as any;
       const posts = await storage.getPostsByUserId(user.id);
-      
+
       // Attach user data to posts
       const postsWithUser = posts.map(post => ({
         ...post,
@@ -112,7 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: undefined
         }
       }));
-      
+
       res.json(postsWithUser);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -126,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/posts", async (req, res) => {
     try {
       const posts = await storage.getAllPosts();
-      
+
       // Get users for each post
       const postsWithUser = await Promise.all(
         posts.map(async post => {
@@ -140,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         })
       );
-      
+
       res.json(postsWithUser);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -151,14 +155,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/posts", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
-      
+
       const postData = insertPostSchema.parse({
         ...req.body,
         userId: user.id
       });
-      
+
       const post = await storage.createPost(postData);
-      
+
       res.status(201).json(post);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -169,12 +173,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  //Upload Route
+  app.post('/api/upload', isAuthenticated, upload.single('file'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl });
+  });
+
+
   // Get post comments
   app.get("/api/posts/:id/comments", async (req, res) => {
     try {
       const postId = parseInt(req.params.id);
       const comments = await storage.getCommentsByPostId(postId);
-      
+
       // Get users for each comment
       const commentsWithUser = await Promise.all(
         comments.map(async comment => {
@@ -188,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         })
       );
-      
+
       res.json(commentsWithUser);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -200,15 +215,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
-      
+
       const commentData = insertCommentSchema.parse({
         ...req.body,
         postId,
         userId: user.id
       });
-      
+
       const comment = await storage.createComment(commentData);
-      
+
       res.status(201).json(comment);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -224,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const count = await storage.getLikeCountByPostId(postId);
-      
+
       res.json(count);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -236,9 +251,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
-      
+
       const liked = await storage.checkUserLikedPost(postId, user.id);
-      
+
       res.json(liked);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -250,15 +265,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
-      
+
       const likeData = insertLikeSchema.parse({
         postId,
         userId: user.id,
         type: "like"
       });
-      
+
       const like = await storage.createLike(likeData);
-      
+
       res.status(201).json(like);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -274,9 +289,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const user = req.user as any;
-      
+
       await storage.deleteLike(postId, user.id);
-      
+
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -307,14 +322,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
-      
+
       const eventData = insertEventSchema.parse({
         ...req.body,
         createdBy: user.id
       });
-      
+
       const event = await storage.createEvent(eventData);
-      
+
       res.status(201).json(event);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -339,14 +354,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/groups", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
-      
+
       const groupData = insertGroupSchema.parse({
         ...req.body,
         createdBy: user.id
       });
-      
+
       const group = await storage.createGroup(groupData);
-      
+
       res.status(201).json(group);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -361,14 +376,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connections", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
-      
+
       const connectionData = insertConnectionSchema.parse({
         ...req.body,
         requesterId: user.id
       });
-      
+
       const connection = await storage.createConnection(connectionData);
-      
+
       res.status(201).json(connection);
     } catch (error) {
       if (error instanceof ZodError) {
