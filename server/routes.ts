@@ -16,7 +16,7 @@ import {
 import multer from 'multer';
 
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ dest: 'uploads/' });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
@@ -179,7 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const filename = req.file.filename;
+    const fileUrl = `/uploads/${filename}`;
     res.json({ url: fileUrl });
   });
 

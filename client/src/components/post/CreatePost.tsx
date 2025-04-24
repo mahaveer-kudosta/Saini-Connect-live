@@ -92,9 +92,10 @@ const CreatePost = ({ currentUser }: CreatePostProps) => {
           }
           
           const { url } = await response.json();
+          const fullUrl = `${window.location.origin}${url}`;
           setAttachments([...attachments, {
             type,
-            url,
+            url: fullUrl,
             id: Date.now().toString()
           }]);
         } catch (error) {
