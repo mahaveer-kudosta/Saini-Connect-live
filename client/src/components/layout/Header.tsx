@@ -72,18 +72,20 @@ const Header = () => {
 
         {/* Desktop Header Icons */}
         <div className="hidden md:flex items-center space-x-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative text-neutral-600 hover:text-primary transition"
-          >
-            <Bell className="h-6 w-6" />
-            {user?.id && (
-              <Badge className="absolute -top-1 -right-1 bg-primary text-white rounded-full text-xs w-4 h-4 flex items-center justify-center p-0">
-                3
-              </Badge>
-            )}
-          </Button>
+          <Link href="/notifications">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-neutral-600 hover:text-primary transition"
+            >
+              <Bell className="h-6 w-6" />
+              {user?.id && (
+                <Badge className="absolute -top-1 -right-1 bg-primary text-white rounded-full text-xs w-4 h-4 flex items-center justify-center p-0">
+                  3
+                </Badge>
+              )}
+            </Button>
+          </Link>
 
           <Button
             variant="ghost"
