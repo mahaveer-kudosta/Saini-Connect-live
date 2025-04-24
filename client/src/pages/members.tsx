@@ -29,7 +29,7 @@ const Members = () => {
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h1 className="font-poppins font-bold text-2xl mb-6">Saini Community Members</h1>
+          <h1 className="font-poppins font-bold text-2xl mb-6">Kudos Community Members</h1>
           
           {/* Search */}
           <div className="relative mb-6">

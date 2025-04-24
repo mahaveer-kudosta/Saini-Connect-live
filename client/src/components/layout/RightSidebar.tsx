@@ -24,7 +24,7 @@ const RightSidebar = () => {
       {/* Suggested Members */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <h3 className="font-poppins font-semibold text-neutral-800 mb-3">People You May Know</h3>
-        
+
         {suggestedUsers && suggestedUsers.length > 0 ? (
           <>
             {suggestedUsers.slice(0, 3).map((user) => (
@@ -57,49 +57,49 @@ const RightSidebar = () => {
           <p className="text-sm text-neutral-500">No suggestions available</p>
         )}
       </div>
-      
+
       {/* Community Groups */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <h3 className="font-poppins font-semibold text-neutral-800 mb-3">Community Groups</h3>
-        
+
         {communityGroups && communityGroups.length > 0 ? (
           <>
-            <Link href="/groups/saini-business-network">
+            <Link href="/groups/kudos-business-network">
               <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-white mr-3">
                   <Users className="h-6 w-6" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-neutral-800 text-sm">Saini Business Network</h4>
+                  <h4 className="font-medium text-neutral-800 text-sm">Kudos Business Network</h4>
                   <p className="text-xs text-neutral-500">485 members</p>
                 </div>
               </div>
             </Link>
-            
-            <Link href="/groups/saini-photography-club">
+
+            <Link href="/groups/kudos-photography-club">
               <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white mr-3">
                   <Camera className="h-6 w-6" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-neutral-800 text-sm">Saini Photography Club</h4>
+                  <h4 className="font-medium text-neutral-800 text-sm">Kudos Photography Club</h4>
                   <p className="text-xs text-neutral-500">238 members</p>
                 </div>
               </div>
             </Link>
-            
-            <Link href="/groups/saini-heritage-culture">
+
+            <Link href="/groups/kudos-heritage-culture">
               <div className="flex items-center py-2 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 rounded-lg px-2 transition cursor-pointer">
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-white mr-3">
                   <BookOpen className="h-6 w-6" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-neutral-800 text-sm">Saini Heritage & Culture</h4>
+                  <h4 className="font-medium text-neutral-800 text-sm">Kudos Heritage & Culture</h4>
                   <p className="text-xs text-neutral-500">692 members</p>
                 </div>
               </div>
             </Link>
-            
+
             <Link href="/groups">
               <div className="block text-center mt-3 text-sm font-medium text-secondary hover:text-secondary-dark transition cursor-pointer">
                 Discover More Groups
@@ -110,7 +110,7 @@ const RightSidebar = () => {
           <p className="text-sm text-neutral-500">No groups available</p>
         )}
       </div>
-      
+
       {/* Community Guidelines */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <h3 className="font-poppins font-semibold text-neutral-800 mb-2">Community Guidelines</h3>

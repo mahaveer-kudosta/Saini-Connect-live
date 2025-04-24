@@ -16,7 +16,7 @@ import { safeString } from "@/lib/utils";
 
 const LeftSidebar = () => {
   const [location] = useLocation();
-  
+
   // Get current user data
   const { data: currentUser } = useQuery<User | null>({
     queryKey: ["/api/users/me"],
@@ -87,7 +87,7 @@ const LeftSidebar = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm p-4 text-center">
-          <p className="font-medium mb-2">Welcome to SainiConnect</p>
+          <p className="font-medium mb-2">Welcome to KudosConnect</p>
           <p className="text-sm text-neutral-500 mb-4">Sign in to connect with the community</p>
           <div className="flex space-x-2 justify-center">
             <Button className="bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition">
@@ -99,7 +99,7 @@ const LeftSidebar = () => {
           </div>
         </div>
       )}
-      
+
       {/* Navigation */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <nav>
@@ -121,7 +121,7 @@ const LeftSidebar = () => {
           </ul>
         </nav>
       </div>
-      
+
       {/* Upcoming Events */}
       <div className="bg-white rounded-xl shadow-sm p-4">
         <h3 className="font-poppins font-semibold text-neutral-800 mb-3">Upcoming Events</h3>

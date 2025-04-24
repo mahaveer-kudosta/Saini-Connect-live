@@ -175,16 +175,16 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 p-4 md:p-8 flex items-center justify-center">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center md:text-left">
-            <h1 className="text-3xl font-bold tracking-tight text-primary">Welcome to SainiConnect</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Welcome to KudosConnect</h1>
             <p className="text-muted-foreground mt-2">Login or create an account to get started</p>
           </div>
-          
+
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <Card>
                 <CardHeader>
@@ -250,13 +250,13 @@ export default function AuthPage() {
                 </CardFooter>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="register">
               <Card>
                 <CardHeader>
                   <CardTitle>Create an account</CardTitle>
                   <CardDescription>
-                    Join our community of Saini professionals
+                    Join our community of Kudos professionals
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -349,15 +349,15 @@ export default function AuthPage() {
           </Tabs>
         </div>
       </div>
-      
+
       {/* Right column - Hero Image and Info */}
       <div className="hidden md:flex md:w-1/2 bg-primary-100 flex-col justify-center items-center p-8">
         <div className="max-w-md text-center">
           <h2 className="text-3xl font-bold tracking-tight text-primary-dark mb-4">
-            Connect with the Saini Community
+            Connect with the Kudos Community
           </h2>
           <p className="text-primary-dark/80 mb-8">
-            Join our growing network of Saini professionals, share experiences, attend events, and build meaningful connections within our community.
+            Join our growing network of Kudos professionals, share experiences, attend events, and build meaningful connections within our community.
           </p>
           <div className="grid grid-cols-2 gap-4 text-primary-dark/80">
             <div className="p-4 bg-white/50 rounded-lg">
