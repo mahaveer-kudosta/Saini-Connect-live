@@ -120,10 +120,12 @@ export class MemStorage implements IStorage {
   }
 
   private initializeData(): void {
+    const { hashPassword } = require('./index');
+    
     // Create admin user
     this.createUser({
       username: "admin",
-      password: "password",
+      password: hashPassword("password123"),
       fullName: "Anjali Saini",
       email: "anjali@sainiconnect.com",
       profileImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
@@ -136,7 +138,7 @@ export class MemStorage implements IStorage {
     // Create additional users
     this.createUser({
       username: "rajesh",
-      password: "password",
+      password: hashPassword("password123"),
       fullName: "Rajesh Saini",
       email: "rajesh@sainiconnect.com",
       profileImage: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
@@ -147,7 +149,7 @@ export class MemStorage implements IStorage {
     
     this.createUser({
       username: "priya",
-      password: "password",
+      password: hashPassword("password123"),
       fullName: "Priya Saini",
       email: "priya@sainiconnect.com",
       profileImage: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
@@ -158,7 +160,7 @@ export class MemStorage implements IStorage {
     
     this.createUser({
       username: "vikram",
-      password: "password",
+      password: hashPassword("password123"),
       fullName: "Vikram Saini",
       email: "vikram@sainiconnect.com",
       profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
@@ -169,13 +171,25 @@ export class MemStorage implements IStorage {
     
     this.createUser({
       username: "meera",
-      password: "password",
+      password: hashPassword("password123"),
       fullName: "Meera Saini",
       email: "meera@sainiconnect.com",
       profileImage: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
       bio: "Healthcare professional working in community wellness.",
       location: "Chennai, India",
       occupation: "Doctor"
+    });
+    
+    // Demo user for testing
+    this.createUser({
+      username: "demo",
+      password: hashPassword("demo123"),
+      fullName: "Demo User",
+      email: "demo@sainiconnect.com",
+      profileImage: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80",
+      bio: "This is a demo account for testing the application. Username: demo, Password: demo123",
+      location: "New Delhi, India",
+      occupation: "Student"
     });
     
     // Create sample posts

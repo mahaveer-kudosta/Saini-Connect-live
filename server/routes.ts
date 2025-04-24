@@ -3,10 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import passport from "passport";
-import { hashPassword } from "./index";
+import { setupAuth, isAuthenticated } from "./auth";
 import { 
-  insertUserSchema, 
   insertPostSchema, 
   insertCommentSchema, 
   insertLikeSchema,
@@ -16,82 +14,16 @@ import {
   insertGroupMemberSchema
 } from "@shared/schema";
 
-// Auth middleware to check if a user is logged in
-const isAuthenticated = (req: Request, res: Response, next: any) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Unauthorized" });
-};
-
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
   // API error handling middleware
   app.use("/api/*", (req, res, next) => {
     next();
   });
-
-  // Authentication routes
-  // Register
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-
-      // Hash the password before storing
-      const userData = insertUserSchema.parse({
-        ...req.body,
-        password: hashPassword(req.body.password)
-      });
-
-      const user = await storage.createUser(userData);
       
-      // Automatically log the user in after registration
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Login failed after registration" });
-        }
-        
-        // Don't expose password
-        const { password, ...userWithoutPassword } = user;
-        return res.status(201).json(userWithoutPassword);
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      res.status(500).json({ message: "Server error" });
-    }
-  });
 
-  // Login
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    // If this function is called, authentication was successful
-    // req.user contains the authenticated user
-    const { password, ...userWithoutPassword } = req.user as any;
-    res.json(userWithoutPassword);
-  });
-
-  // Logout
-  app.post("/api/auth/logout", (req, res) => {
-    req.logout(() => {
-      res.json({ message: "Logged out successfully" });
-    });
-  });
-
-  // Current User
-  app.get("/api/users/me", isAuthenticated, async (req, res) => {
-    try {
-      // User is already authenticated via isAuthenticated middleware
-      const { password, ...userWithoutPassword } = req.user as any;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ message: "Server error" });
-    }
-  });
 
   // Update current user
   app.patch("/api/users/me", isAuthenticated, async (req, res) => {
