@@ -33,16 +33,37 @@ const PostCard = ({ post }: PostCardProps) => {
   // Get post comments
   const { data: comments = [] } = useQuery<CommentWithUser[]>({
     queryKey: [`/api/posts/${post.id}/comments`],
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${post.id}/comments`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch comments');
+      return response.json();
+    }
   });
   
   // Get like count
   const { data: likeCount = 0 } = useQuery<number>({
     queryKey: [`/api/posts/${post.id}/likes/count`],
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${post.id}/likes/count`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch like count');
+      return response.json();
+    }
   });
   
   // Check if current user has liked the post
   const { data: isLiked = false } = useQuery<boolean>({
     queryKey: [`/api/posts/${post.id}/likes/me`],
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${post.id}/likes/me`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to check like status');
+      return response.json();
+    }
   });
 
   // Like post mutation
