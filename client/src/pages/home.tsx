@@ -16,8 +16,11 @@ const Home = () => {
   // Get posts for feed
   const { data: posts, isLoading: isLoadingPosts } = useQuery<PostWithUser[]>({
     queryKey: ["/api/posts"],
-    refetchOnWindowFocus: false,
-    refetchOnMount: true
+    queryFn: async () => {
+      const response = await fetch("/api/posts", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    }
   });
 
   return (
