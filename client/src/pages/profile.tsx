@@ -130,7 +130,7 @@ const Profile = () => {
             </Button>
           </div>
           <CardContent className="px-6 pb-6 relative">
-            <div className="absolute -top-24 left-6">
+            <div className="absolute -top-32 left-6">
               <div className="relative">
                 <Avatar className="h-32 w-32 border-4 border-white">
                   <AvatarImage
