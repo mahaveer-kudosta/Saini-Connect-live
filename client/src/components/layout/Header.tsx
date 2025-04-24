@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Bell, MessageSquare, Menu, Search as SearchIcon, LogOut, User as UserIcon, Settings } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
