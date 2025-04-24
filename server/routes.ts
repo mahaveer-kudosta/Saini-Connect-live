@@ -202,12 +202,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const { content, parentId } = req.body;
       
-      const commentData = insertCommentSchema.parse({
-        content,
+      const commentData = {
         postId,
         userId: user.id,
+        content,
         parentId: parentId || null
-      });
+      };
       
       const comment = await storage.createComment(commentData);
       const commentWithUser = {
@@ -222,6 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(commentWithUser);
     } catch (error) {
+      console.error('Error creating comment:', error);
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
